@@ -1,0 +1,43 @@
+name: Build Windows Bot EXE
+on: [workflow_dispatch] # 手动触发编译
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - name: 拉取代码
+        uses: actions/checkout@v4
+
+      - name: 安装Rust环境
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: stable
+          target: x86_64-pc-windows-msvc
+
+      - name: 编译Release版本（优化性能）
+        run: cargo build --release --target x86_64-pc-windows-msvc
+
+      - name: 打包可运行文件
+        run: |
+          # 创建打包目录
+          mkdir -p bot-windows
+          # 复制编译好的exe
+          cp target/x86_64-pc-windows-msvc/release/Polymarket-Kalshi-Arbitrage-bot.exe bot-windows/
+          # 生成.env配置模板（需手动填密钥）
+          @echo KALSHI_API_KEY_ID=你的Kalshi API密钥ID > bot-windows/.env
+          @echo KALSHI_PRIVATE_KEY_PATH=./kalshi_private_key.pem >> bot-windows/.env
+          @echo POLY_PRIVATE_KEY=0x你的Polymarket钱包私钥 >> bot-windows/.env
+          @echo POLY_FUNDER=0x你的钱包地址 >> bot-windows/.env
+          @echo DRY_RUN=1 >> bot-windows/.env
+          @echo CB_MAX_DAILY_LOSS=500.0 >> bot-windows/.env
+          # 生成双击运行脚本
+          @echo @echo off > bot-windows/启动机器人.bat
+          @echo echo 正在启动Polymarket-Kalshi套利机器人（模拟交易模式）... >> bot-windows/启动机器人.bat
+          @echo .\Polymarket-Kalshi-Arbitrage-bot.exe >> bot-windows/启动机器人.bat
+          @echo pause >> bot-windows/启动机器人.bat
+
+      - name: 上传编译结果
+        uses: actions/upload-artifact@v4
+        with:
+          name: 机器人Windows版
+          path: bot-windows/
